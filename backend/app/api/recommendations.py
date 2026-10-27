@@ -17,6 +17,10 @@ from app.schemas.recommendation import (
 )
 from app.agent.agent import ConciergeAgent
 from app.agent.types import TravelRequirements, FlightDTO, HotelDTO
+from app.seeds.inventory_service import (
+    ensure_flights_for_route_and_date,
+    ensure_hotels_for_city_and_dates,
+)
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
@@ -58,7 +62,7 @@ def create_recommendation(
     db: Session = Depends(get_db)
 ):
     """
-    Validates travel requirements, coordinates database queries for simulated inventory,
+    Validates travel requirements, ensures simulated inventory exists for route & dates,
     executes the goal-based agent optimization, persists search history, and returns ranked packages.
     """
     # 1. Map to agent's TravelRequirements domain model
@@ -81,26 +85,16 @@ def create_recommendation(
         rooms_per_party=payload.rooms_per_party,
     )
 
-    # 2. Query simulated flight & hotel inventory from DB
-    dep_city = payload.departure_city.strip().lower()
-    dest_city = payload.destination_city.strip().lower()
-
-    # Outbound flights: dep -> dest on departure_date
-    outbounds = db.query(Flight).filter(
-        func.lower(Flight.origin_city) == dep_city,
-        func.lower(Flight.destination_city) == dest_city,
-    ).all()
-
-    # Return flights: dest -> dep on return_date
-    returns = db.query(Flight).filter(
-        func.lower(Flight.origin_city) == dest_city,
-        func.lower(Flight.destination_city) == dep_city,
-    ).all()
-
-    # Destination hotels
-    hotels = db.query(Hotel).filter(
-        func.lower(Hotel.city) == dest_city
-    ).all()
+    # 2. Dynamic inventory verification: Ensure simulated flight & hotel inventory exists
+    outbounds = ensure_flights_for_route_and_date(
+        db, payload.departure_city, payload.destination_city, payload.departure_date
+    )
+    returns = ensure_flights_for_route_and_date(
+        db, payload.destination_city, payload.departure_city, payload.return_date
+    )
+    hotels = ensure_hotels_for_city_and_dates(
+        db, payload.destination_city, payload.departure_date, payload.return_date
+    )
 
     # Convert to DTOs
     all_flights = [flight_to_dto(f) for f in (outbounds + returns)]
@@ -141,7 +135,6 @@ def create_recommendation(
         db.commit()
     except Exception as e:
         db.rollback()
-        # Non-fatal log so recommendation response still succeeds if history write errors
         print(f"Warning: Failed to save search history: {e}")
 
     return response_data
