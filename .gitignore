@@ -23,14 +23,13 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
-# ─────────────── Node / Frontend ───────────────
+# ─────────────── Frontend (Managed Separately) ───────────────
+frontend/
 node_modules/
-frontend/node_modules/
 dist/
-frontend/dist/
 build/
 .vite/
-frontend/.vite/
+
 
 # ─────────────── Environment & Secrets ───────────────
 .env

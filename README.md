@@ -1,211 +1,197 @@
-# AI Travel Concierge Agent
+# AI Travel Concierge Agent — Backend Service
 
 ### Automated E-Commerce Concierge Agent — AI Travel Planning Assistant
 
-An intelligent goal-based AI travel planning assistant that recommends optimized flight and hotel packages using constraint satisfaction, cost optimization, and simulated booking workflows.
+An intelligent goal-based AI travel planning backend service that recommends optimized flight and hotel packages using constraint satisfaction, cost optimization, and simulated booking workflows.
 
 ---
 
 ## 📌 Problem Statement
 
-Planning multi-city travel involves comparing hundreds of flight and hotel combinations across varying budgets, dates, and preferences. Travelers face information overload, inconsistent pricing, and difficulty identifying the optimal package that satisfies all their constraints. This project addresses that challenge with a deterministic, transparent AI agent.
+Planning multi-city travel requires evaluating combinatorially large numbers of flight and hotel pairings across budgets, calendar dates, and user preferences. Travelers face information overload, volatile pricing, and complex trade-offs between flight convenience and hotel quality. This project provides a robust, deterministic, and explainable AI backend agent that solves this constraint optimization problem.
 
 ---
 
 ## 🎯 Project Objectives
 
-1. Build a **goal-based intelligent agent** that autonomously selects the best travel package from all feasible combinations.
-2. Implement **hard constraint satisfaction** to eliminate infeasible packages before optimization.
-3. Provide **transparent cost breakdowns** and explainable rationale for every recommendation.
-4. Support a **safe booking workflow** with offer revalidation and explicit user confirmation.
-5. Create a **full-stack application** (FastAPI backend + React frontend) suitable for academic demonstration.
+1. **Goal-Based Agent**: Formulate the recommendation task as an explicit goal optimization problem: minimize total package cost subject to strict constraint satisfaction.
+2. **Hard Constraint Satisfaction**: Eliminate infeasible combinations (route continuity, chronological ordering, seat capacity, room occupancy, mandatory hotel stars, budget limits).
+3. **Deterministic Optimization & Tie-Breaking**: Apply transparent multi-criteria tie-breakers (stops, duration, departure convenience, star rating, identifier).
+4. **Transparent Explainability**: Provide clear mathematical cost breakdowns and actionable diagnostic reasons when a query is infeasible.
+5. **Safe Booking Workflow**: Implement a two-phase offer verification and explicit user confirmation protocol before generating reservation identifiers.
+6. **Independent Backend Service**: Expose clean REST endpoints via FastAPI for frontend and external client integrations.
 
 ---
 
 ## 🌟 Key Features
 
-- **Goal-Based Intelligent Agent**: 7-stage cognitive pipeline — Perception, Goal Formulation, Candidate Generation, Constraint Satisfaction, Cost Calculation, Optimization, and Explanation.
-- **Hard Constraints Enforcement**: Validates route continuity, temporal ordering, hotel location, day-by-day room availability, seat capacity, budget limits, and mandatory hotel star ratings.
+- **Goal-Based Intelligent Agent**: 7-stage cognitive pipeline (Perception, Goal Formulation, Candidate Generation, Constraint Satisfaction, Cost Calculation, Optimization, and Explanation).
+- **Hard Constraints Enforcement**: Validates route continuity, temporal departure/return ordering, hotel location matching, daily room availability, seat capacity, budget ceilings, and hotel star requirements.
 - **Deterministic Multi-Criteria Tie-Breaking**:
-  1. Primary: Lowest total package cost
+  1. Primary: Lowest total package cost in INR (₹)
   2. Tie-breaker 1: Fewer total flight stops
   3. Tie-breaker 2: Shorter total travel duration
   4. Tie-breaker 3: More convenient departure/arrival times
   5. Tie-breaker 4: Higher hotel star rating
   6. Tie-breaker 5: Deterministic identifier fallback
-- **Transparent Cost Calculation**: Accurate formulas for flight fares, nightly hotel rates, party room sharing, and remaining budget savings.
-- **Diagnostic Infeasible Reporting**: When a query cannot be satisfied, the agent details why combinations were rejected and provides actionable suggestions.
-- **Offer Revalidation & Safe Booking**: Explicit two-phase booking with price re-verification and confirmation enforcement.
-- **Full-Stack Architecture**:
-  - **Backend**: Python FastAPI with Pydantic V2 schemas, SQLAlchemy ORM, and automated test suite.
-  - **Frontend**: React 19 + Vite + TypeScript with dark glassmorphism design system.
-  - **Database**: PostgreSQL / SQLite via SQLAlchemy with Alembic migrations and seed scripts.
+- **Transparent Cost Calculation**: Accurate formulas for per-passenger flight fares, per-room nightly hotel rates, party room sharing, and budget savings.
+- **Diagnostic Infeasible Reporting**: When no package satisfies all constraints, the agent categorizes rejections (budget exceeded, star mismatch, lack of seats) and provides actionable adjustment suggestions.
+- **Offer Revalidation & Two-Phase Booking**: Re-verifies inventory price and availability (`/api/verify-offer`) and requires explicit confirmation (`confirm: true`) for reservations (`/api/booking/confirm`).
+- **Provider Abstraction**: Pluggable provider architecture with a zero-dependency offline Simulated Provider and an optional Amadeus API adapter.
 
 ---
 
 ## 🧠 AI Architecture & Working Methodology
 
-### Goal-Based Agent (Sense–Plan–Act)
+### Cognitive Pipeline (Sense–Plan–Act)
 
 ```
-┌────────────────────────────────────────────────────┐
-│               PERCEPTION & VALIDATION              │
-│  Parse travel query → Validate constraints         │
-├────────────────────────────────────────────────────┤
-│               GOAL FORMULATION                     │
-│  Objective: min(Total Package Cost)                │
-│  Subject to: All Hard Constraints = True           │
-├────────────────────────────────────────────────────┤
-│        STATE-SPACE PRUNING & CANDIDATE GEN         │
-│  Filter flights by route/date → Filter hotels      │
-│  Generate all (outbound × return × hotel) combos   │
-├────────────────────────────────────────────────────┤
-│            CONSTRAINT SATISFACTION                  │
-│  Route continuity, temporal order, seat capacity,  │
-│  room occupancy, star rating, budget limits        │
-├────────────────────────────────────────────────────┤
-│              COST CALCULATION                       │
-│  Per-passenger flight fare + per-room hotel rate   │
-│  Party room sharing + total package cost           │
-├────────────────────────────────────────────────────┤
-│         MULTI-CRITERIA OPTIMIZATION                │
-│  Rank by cost → stops → duration → times → stars  │
-├────────────────────────────────────────────────────┤
-│          EXPLAINABILITY & TRANSPARENCY              │
-│  Generate rationale, cost breakdown, suggestions   │
-└────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│               1. PERCEPTION & VALIDATION               │
+│  Validate origin/dest, dates, adults, rooms, budget    │
+├────────────────────────────────────────────────────────┤
+│               2. GOAL FORMULATION                      │
+│  Objective: min(Total Package Cost)                    │
+│  Subject to: Hard Constraints(Package) == True         │
+├────────────────────────────────────────────────────────┤
+│        3. STATE-SPACE PRUNING & CANDIDATE GEN          │
+│  Filter flights by route/date → Filter city hotels     │
+│  Generate candidate combinations (outbound × return × hotel) │
+├────────────────────────────────────────────────────────┤
+│            4. CONSTRAINT SATISFACTION (CSP)            │
+│  Prune candidates violating route continuity, timing,  │
+│  seat capacity, room occupancy, stars, or budget       │
+├────────────────────────────────────────────────────────┤
+│              5. COST CALCULATION                       │
+│  Compute per-passenger flight fares, nightly hotel     │
+│  room rates, party room-sharing, and total cost        │
+├────────────────────────────────────────────────────────┤
+│         6. MULTI-CRITERIA OPTIMIZATION                 │
+│  Rank valid packages: Cost → Stops → Duration →       │
+│  Convenience → Star Rating → Deterministic ID          │
+├────────────────────────────────────────────────────────┤
+│          7. EXPLAINABILITY & TRANSPARENCY              │
+│  Generate itemized cost breakdown, decision rationale, │
+│  or diagnostic infeasible suggestions                  │
+└────────────────────────────────────────────────────────┘
 ```
-
-### Constraint Satisfaction & Optimization
-
-The agent uses a **generate-and-test** approach with **forward pruning**:
-- **Hard constraints** are checked exhaustively — any violation eliminates the candidate.
-- **Soft optimization** ranks surviving candidates by total cost with deterministic tie-breakers.
-- **Infeasibility diagnostics** categorize rejections (budget exceeded, star mismatch, no seats, date conflict) and suggest remediation.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-|---|---|
-| **Backend Framework** | Python 3.10+, FastAPI, Pydantic V2 |
-| **Database & ORM** | SQLAlchemy 2.0, Alembic, PostgreSQL / SQLite |
-| **Frontend** | React 19, Vite, TypeScript, Vanilla CSS |
-| **Testing** | pytest, httpx (TestClient) |
-| **Containerization** | Docker Compose (PostgreSQL) |
-| **Provider Adapters** | Simulated Provider (default), Amadeus API adapter (optional) |
+| Component | Technology | Description |
+|---|---|---|
+| **Language & Runtime** | Python 3.10+ (tested on Python 3.13) | Core backend logic & agent |
+| **Web Framework** | FastAPI (>= 0.115.0) | High-performance asynchronous REST API |
+| **Validation & Settings** | Pydantic V2 & Pydantic-Settings | Strict request/response schemas & configuration |
+| **ORM & Database** | SQLAlchemy 2.0 & Alembic | Relational mapping for SQLite / PostgreSQL |
+| **Testing** | pytest & HTTPX TestClient | Automated unit and integration test suite |
+| **ASGI Server** | Uvicorn | Production-ready ASGI server |
+| **External Integration** | Requests & Amadeus Adapter | Optional travel API adapter with simulated fallback |
 
 ---
 
-## 📁 Project Folder Structure
+## 📁 Repository Folder Structure
 
 ```text
 AI-Travel-Concierge-Agent/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                     # FastAPI entrypoint, lifespan, CORS, error handlers
-│   │   ├── config.py                   # Pydantic Settings & environment variables
+│   │   ├── main.py                     # FastAPI entrypoint, CORS, lifespan & error handlers
+│   │   ├── config.py                   # Pydantic Settings & environment variable loader
 │   │   ├── database.py                 # SQLAlchemy engine, session maker, and Base
-│   │   ├── agent/                      # Goal-Based Intelligent Agent
-│   │   │   ├── agent.py                # ConciergeAgent orchestrator (Stages 1-7)
+│   │   ├── agent/                      # Independent Goal-Based Intelligent Agent
+│   │   │   ├── agent.py                # ConciergeAgent orchestrator (Stages 1–7)
 │   │   │   ├── constraints.py          # Hard & soft constraint satisfiers
 │   │   │   ├── optimizer.py            # Cost minimizer & deterministic tie-breakers
-│   │   │   ├── explainer.py            # Rationale & diagnostic suggestions
-│   │   │   └── types.py                # Agent DTOs and data models
+│   │   │   ├── explainer.py            # Decision rationale & diagnostic suggestions
+│   │   │   ├── types.py                # Agent DTOs and data models
+│   │   │   └── __init__.py
 │   │   ├── api/                        # REST route handlers
 │   │   │   ├── health.py               # GET /api/health
 │   │   │   ├── flights.py              # GET /api/flights
 │   │   │   ├── hotels.py               # GET /api/hotels
-│   │   │   ├── recommendations.py      # POST /api/recommendations
-│   │   │   └── booking.py              # POST /api/verify-offer, /api/booking/confirm
+│   │   │   ├── recommendations.py      # POST /api/recommendations, GET /api/recommendations/{id}
+│   │   │   ├── booking.py              # POST /api/verify-offer, POST /api/booking/confirm
+│   │   │   └── __init__.py
 │   │   ├── models/                     # SQLAlchemy ORM models
+│   │   │   ├── flight.py               # Flight inventory entity
+│   │   │   ├── hotel.py                # Hotel & daily availability entities
+│   │   │   ├── booking.py              # Reservation entity
+│   │   │   ├── recommendation.py       # Recommendation history persistence
+│   │   │   └── __init__.py
+│   │   ├── schemas/                    # Pydantic request & response validation schemas
 │   │   │   ├── flight.py
 │   │   │   ├── hotel.py
 │   │   │   ├── booking.py
-│   │   │   └── recommendation.py
-│   │   ├── schemas/                    # Pydantic request & response validation
-│   │   │   ├── flight.py
-│   │   │   ├── hotel.py
-│   │   │   ├── booking.py
-│   │   │   └── recommendation.py
-│   │   ├── services/                   # Travel provider abstractions
-│   │   │   ├── provider_interface.py   # Abstract provider interface
-│   │   │   ├── simulated_provider.py   # Deterministic simulated inventory
-│   │   │   └── amadeus_provider.py     # Optional Amadeus API adapter
-│   │   └── seeds/                      # Database seed datasets & runner
-│   │       ├── seed_data.py            # 32+ flights & 27+ hotels across Indian corridors
-│   │       ├── inventory_service.py    # Dynamic inventory generator
+│   │   │   ├── recommendation.py
+│   │   │   └── __init__.py
+│   │   ├── services/                   # Travel provider adapters
+│   │   │   ├── provider_interface.py   # Abstract provider contract
+│   │   │   ├── simulated_provider.py   # Offline simulated flight/hotel provider
+│   │   │   ├── amadeus_provider.py     # Amadeus test sandbox adapter with fallback
+│   │   │   └── __init__.py
+│   │   └── seeds/                      # Seed inventory and runner
+│   │       ├── seed_data.py            # Flights & hotels across Indian corridors
+│   │       ├── inventory_service.py    # Dynamic route inventory generator
 │   │       └── run_seed.py             # CLI database populator
-│   ├── tests/                          # Automated test suite (39 pytest cases)
+│   ├── tests/                          # Automated test suite (57 pytest cases)
 │   │   ├── conftest.py
-│   │   ├── test_agent.py
-│   │   ├── test_api.py
-│   │   ├── test_scenarios.py
-│   │   ├── test_provider_and_booking.py
-│   │   └── test_amadeus_adapter.py
+│   │   ├── test_agent.py               # Agent logic & constraint satisfaction tests
+│   │   ├── test_api.py                 # REST endpoint integration tests
+│   │   ├── test_scenarios.py           # Infeasible & failure edge cases
+│   │   ├── test_provider_and_booking.py# Provider abstraction & booking verification
+│   │   └── test_amadeus_adapter.py     # Amadeus adapter unit tests & error handling
 │   ├── alembic/                        # Alembic database migrations
 │   ├── alembic.ini
-│   ├── requirements.txt
-│   ├── pytest.ini
-│   ├── .env.example
-│   └── README.md                       # Detailed backend documentation
-│
-├── frontend/                           # React + Vite + TypeScript application
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── index.css                   # Custom CSS design system
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── types/
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── docker-compose.yml                  # PostgreSQL container definition
-├── .gitignore
-└── README.md                           # This file
+│   ├── requirements.txt                # Python backend dependencies
+│   ├── pytest.ini                      # Pytest configuration
+│   ├── .env.example                    # Environment configuration template
+│   └── README.md                       # Dedicated backend technical documentation
+├── docker-compose.yml                  # PostgreSQL database container definition
+├── .gitignore                          # Git exclusions (ignores .env, venv, cache, db, frontend)
+└── README.md                           # Main repository documentation
 ```
 
 ---
 
-## 🚀 Backend Setup & Running Locally
+## 🚀 Backend Setup & Execution Instructions
 
 ### Prerequisites
-- **Python**: 3.10+ (tested on Python 3.13)
-- **Node.js**: v18+ (tested on Node v22) — for frontend only
-- **Database**: PostgreSQL (optional) or SQLite (default, zero-dependency)
+- **Python**: 3.10+ (tested and verified on Python 3.13)
+- **Database**: SQLite (default zero-dependency, auto-created) or PostgreSQL (optional via Docker Compose)
 
-### Step 1: Clone the Repository
+---
 
-```bash
-git clone https://github.com/Kanakachala-boom/AI-Travel-Concierge-Agent.git
-cd AI-Travel-Concierge-Agent
-```
-
-### Step 2: Backend Setup
+### Step-by-Step Setup (Windows PowerShell)
 
 ```powershell
+# 1. Navigate to the backend directory
 cd backend
 
-# Create and activate virtual environment
+# 2. Create a virtual environment
 python -m venv venv
+
+# 3. Activate the virtual environment
 .\venv\Scripts\Activate.ps1
 
-# Install dependencies
+# 4. Install all backend dependencies
 pip install -r requirements.txt
 
-# Configure environment variables
+# 5. Create environment configuration from template
 Copy-Item .env.example .env
 
-# Initialize database and seed simulated inventory
+# 6. Initialize database and seed simulated travel inventory
 python -m app.seeds.run_seed
 
-# Start the FastAPI server
+# 7. Start the FastAPI backend server
 python -m uvicorn app.main:app --reload
 ```
 
-> **macOS / Linux alternative:**
+> **macOS / Linux Alternative:**
 > ```bash
+> cd backend
 > python3 -m venv venv
 > source venv/bin/activate
 > pip install -r requirements.txt
@@ -214,144 +200,154 @@ python -m uvicorn app.main:app --reload
 > python -m uvicorn app.main:app --reload
 > ```
 
-### Step 3: Verify Backend
+---
 
-- **Base URL**: `http://127.0.0.1:8000`
-- **Swagger Docs**: `http://127.0.0.1:8000/docs`
-- **ReDoc Docs**: `http://127.0.0.1:8000/redoc`
+## 🌐 API Verification & Interactive Documentation
 
-### Step 4: Frontend Setup
+Once the server is running on `http://127.0.0.1:8000`:
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+- **Health Check**:
+  ```powershell
+  Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health"
+  ```
+  Expected Response:
+  ```json
+  {
+    "status": "online",
+    "database": "healthy",
+    "service": "Automated E-Commerce Concierge Agent",
+    "version": "1.0.0"
+  }
+  ```
 
-The frontend will be available at: `http://127.0.0.1:5173/`
+- **Interactive Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **ReDoc Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ---
 
 ## 🧪 Running Automated Tests
 
-Run the full test suite (39 tests):
+Run the complete test suite (57 test cases):
 
 ```powershell
 cd backend
 python -m pytest -v
 ```
 
-### Test Coverage Breakdown
+### Test Coverage Highlights
 
-| Test File | Tests | Coverage |
+| Test File | Tests | Focus Areas |
 |---|---|---|
-| `test_agent.py` | 6 | Perception validation, room calculation, budget optimization, luxury trips, infeasible explanations, tie-breaking |
-| `test_api.py` | 11 | Health endpoint, flights/hotels filtering, scenario integration, 422 validation, history retrieval |
-| `test_scenarios.py` | 4 | Unseeded routes, insufficient seats, DB disconnect, strict hotel star mismatch |
-| `test_provider_and_booking.py` | 9 | Provider abstraction, offer revalidation, booking confirmation, provider rejection |
-| `test_amadeus_adapter.py` | 9 | Unconfigured fallback, OAuth2, rate-limit, timeout, flight parsing, sandbox disclaimers |
+| `test_agent.py` | 10 | Perception validation, room sharing calculations, tight-budget optimization, luxury fulfillment, infeasible explanations, deterministic tie-breaking |
+| `test_api.py` | 13 | Health endpoint, flight/hotel filtering, scenario 1/2/3 integration, 422 input validation, recommendation history, UTF-8 rupee (₹) encoding |
+| `test_scenarios.py` | 4 | Unseeded routes, group seat exhaustion, database connection failures, strict hotel star category mismatches |
+| `test_provider_and_booking.py` | 21 | Provider interface abstraction, offer price revalidation, expired offers, explicit confirmation enforcement (`confirm: true`), duplicate booking prevention |
+| `test_amadeus_adapter.py` | 9 | Unconfigured fallback, OAuth2 token acquisition, 401 unauthorized handling, 429 rate limit handling, timeout handling, flight parsing, sandbox disclaimers |
 
 ---
 
 ## 📋 API Endpoints Reference
 
+All endpoints are dual-mounted under both `/api/*` and the root path:
+
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | Health check verifying service and database status |
-| `GET` | `/api/flights` | Query simulated flights (filters: origin, destination, date, airline, max_stops) |
-| `GET` | `/api/hotels` | Query simulated hotels (filters: city, star_rating, max_price, amenity) |
-| `POST` | `/api/recommendations` | Execute goal-based agent optimization and return ranked packages |
+| `GET` | `/api/health` | Health check verifying service status and database connectivity |
+| `GET` | `/api/flights` | Query available flights (filters: `origin`, `destination`, `date`, `airline`, `max_stops`) |
+| `GET` | `/api/hotels` | Query available hotels (filters: `city`, `star_rating`, `max_price`, `amenity`) |
+| `POST` | `/api/recommendations` | Execute goal-based recommendation agent and return ranked travel packages |
 | `GET` | `/api/recommendations/{id}` | Retrieve a previously saved recommendation by UUID |
 | `GET` | `/api/recommendations/history` | List recent recommendation search histories |
-| `POST` | `/api/verify-offer` | Revalidate offer price & availability prior to booking |
+| `POST` | `/api/verify-offer` | Revalidate offer price and inventory availability prior to booking |
 | `POST` | `/api/booking/confirm` | Submit reservation (requires explicit `confirm: true`) |
 
 ---
 
-## ⚙️ Environment Variable Configuration
+## ⚙️ Environment Variables
 
-Copy `.env.example` to `.env` in the `backend/` directory. Key settings:
+The backend uses Pydantic Settings configured via `backend/.env`. A complete template is provided in `backend/.env.example`:
 
-| Variable | Default | Description |
+| Variable | Default Value | Description |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./concierge.db` | Database connection string |
-| `PROVIDER_MODE` | `simulated` | `simulated` (default) or `amadeus` |
-| `APP_ENV` | `development` | Application environment |
-| `CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed CORS origins |
-| `AMADEUS_CLIENT_ID` | *(empty)* | Optional Amadeus API key |
-| `AMADEUS_CLIENT_SECRET` | *(empty)* | Optional Amadeus API secret |
+| `DATABASE_URL` | `sqlite:///./concierge.db` | SQLAlchemy connection string (SQLite default, PostgreSQL supported) |
+| `PROVIDER_MODE` | `simulated` | Inventory provider: `simulated` (default) or `amadeus` |
+| `APP_ENV` | `development` | Application environment (`development` / `production`) |
+| `API_V1_PREFIX` | `/api` | API route prefix |
+| `CORS_ORIGINS` | `["http://localhost:5173", ...]` | Allowed CORS origins for frontend clients |
+| `DEBUG` | `True` | Enable debug logs |
+| `AMADEUS_CLIENT_ID` | `""` | Optional Amadeus API key (leave blank for simulated mode) |
+| `AMADEUS_CLIENT_SECRET` | `""` | Optional Amadeus API secret |
+| `AMADEUS_ENV` | `test` | Amadeus environment (`test` / `production`) |
+| `AMADEUS_TIMEOUT_SECONDS` | `10` | HTTP request timeout for external APIs |
 
 ---
 
-## ⚠️ Simulated Provider Disclaimer
+## ⚠️ Simulated Provider & Academic Disclaimer
 
-> **This application uses simulated travel inventory by default.** All flight schedules, seat counts, hotel rooms, and prices are generated internally for academic demonstration purposes. Booking references (`SIM-RES-...`) carry explicit academic disclaimers. **No actual airline tickets, hotel reservations, or monetary payments are processed.**
-
-The optional Amadeus adapter connects to the Amadeus Self-Service **Test** sandbox and similarly does not produce real-world reservations.
-
----
-
-## 💡 Example Scenarios
-
-1. **Tight-Budget Trip (₹20,000)**: Delhi → Mumbai, 4 nights, 1 adult, 3★ hotel → Agent selects cheapest valid package.
-2. **Luxury Trip (₹1,50,000)**: Delhi → Mumbai, 4 nights, 2 adults, strict 5★ → Agent satisfies luxury constraint within budget.
-3. **Infeasible Trip (₹4,000)**: Delhi → Goa, 2 adults, 4★ → Agent reports infeasibility with diagnostic rejections and actionable suggestions.
+> **IMPORTANT DISCLAIMER**:  
+> The default travel provider operates entirely with **simulated inventory**. All flight schedules, seat inventories, hotel rooms, and prices are dynamically generated for academic and demonstration purposes. Booking references generated by this service (`SIM-RES-...`) are academic artifacts.  
+> **No actual airline tickets or hotel bookings are made, and no monetary transactions occur.**  
+> When the optional Amadeus adapter is enabled, it connects to the Amadeus Self-Service **Test Sandbox**, which also produces test-only reservations without real-world validity.
 
 ---
 
 ## 👥 Team Collaboration Guide
 
-### Cloning the Repository
+This repository contains the backend service. Teammates can clone the repository, run the backend locally, and work on their assigned features using Git feature branches.
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Kanakachala-boom/AI-Travel-Concierge-Agent.git
 cd AI-Travel-Concierge-Agent
 ```
 
-### Creating a Feature Branch
+### 2. Create a Feature Branch
 
-Before making any changes, create your own branch:
+Always create a dedicated feature branch before starting work:
 
 ```bash
-git checkout -b feature/your-task
+git checkout -b feature/your-assigned-task
 ```
 
-### Committing and Pushing Your Work
+### 3. Commit and Push Changes
 
 ```bash
 git add .
 git commit -m "Describe your changes clearly"
-git push -u origin feature/your-task
+git push -u origin feature/your-assigned-task
 ```
 
-Then create a **Pull Request** on GitHub for review.
+After pushing, open a **Pull Request (PR)** on GitHub targeting the `main` branch.
 
-### Adding Collaborators
+### 4. Adding Collaborators
 
-The repository owner can add teammates via:
-**GitHub → Repository → Settings → Collaborators → Add people**
+To give teammates push and pull access:
+1. Navigate to the repository on GitHub: [https://github.com/Kanakachala-boom/AI-Travel-Concierge-Agent](https://github.com/Kanakachala-boom/AI-Travel-Concierge-Agent)
+2. Click **Settings** → **Collaborators**
+3. Click **Add people** and enter each teammate's GitHub username or email address
+4. Teammates must accept the invitation sent to their email or GitHub notifications
 
-Enter each teammate's GitHub username or email and grant appropriate access.
+### 5. Branch Naming Conventions
 
-### Branch Naming Conventions
-
-| Branch Pattern | Purpose |
-|---|---|
-| `main` | Stable production branch |
-| `feature/your-task` | New feature development |
-| `bugfix/issue-description` | Bug fixes |
-| `docs/what-you-documented` | Documentation updates |
-
----
-
-## 🔒 Security Notes
-
-- **Never commit** `.env` files, API keys, or database credentials.
-- The `.gitignore` is configured to exclude sensitive files.
-- Use `.env.example` as a template — teammates should create their own `.env` locally.
+| Branch Prefix | Purpose | Example |
+|---|---|---|
+| `feature/` | New functionality or endpoints | `feature/user-profiles` |
+| `bugfix/` | Bug fixes and patches | `bugfix/flight-filter-tz` |
+| `test/` | Adding or updating tests | `test/add-stress-tests` |
+| `docs/` | Documentation improvements | `docs/update-api-specs` |
 
 ---
 
-## 📄 License
+## 🔒 Security & Contribution Rules
+
+- **Never commit `.env` files** or any real API keys, passwords, or database credentials.
+- The `.gitignore` is configured to exclude virtual environments (`venv/`), database files (`*.db`, `*.sqlite3`), local caches, and secrets.
+- Always use `.env.example` as the reference template for environment configuration.
+- Run tests (`python -m pytest -v`) before committing any code changes.
+
+---
+
+## 📄 License & Attribution
 
 This project is developed for academic purposes as part of the **Automated E-Commerce Concierge Agent** course project.
