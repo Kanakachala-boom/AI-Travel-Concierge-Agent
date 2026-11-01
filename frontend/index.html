@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automated E-Commerce Concierge Agent — AI Trip Planner</title>
+  <meta name="description" content="Find the best flight and hotel combinations within your budget using an AI travel concierge." />
+  <link rel="icon" href="assets/icons/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a href="#home" class="brand" aria-label="Automated E-Commerce Concierge Agent home">
+        <img src="assets/icons/logo.svg" alt="" width="32" height="32" />
+        <span>Automated E-Commerce <strong>Concierge Agent</strong></span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="navLinks" class="nav-links" aria-label="Main navigation">
+        <a href="#home" class="active">Home</a>
+        <a href="#results">Explore</a>
+        <a href="#searches">My Searches</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="container hero-inner">
+        <div class="hero-text">
+          <p class="eyebrow">AI-powered travel optimization</p>
+          <h1>Plan Your Perfect Trip with AI</h1>
+          <p class="subtitle">Find the best flight and hotel combinations within your budget using intelligent travel optimization.</p>
+        </div>
+
+        <form id="searchForm" class="search-card" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="departure_city">Departure city *</label>
+              <select id="departure_city" name="departure_city" required>
+                <option value="">Select city</option>
+              </select>
+              <small class="error" id="err-departure_city" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="destination_city">Destination city *</label>
+              <select id="destination_city" name="destination_city" required>
+                <option value="">Select city</option>
+              </select>
+              <small class="error" id="err-destination_city" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="departure_date">Departure date *</label>
+              <input type="date" id="departure_date" name="departure_date" required />
+              <small class="error" id="err-departure_date" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="return_date">Return date *</label>
+              <input type="date" id="return_date" name="return_date" required />
+              <small class="error" id="err-return_date" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="adults">Adult travelers *</label>
+              <input type="number" id="adults" name="adults" min="1" max="20" value="1" required />
+              <small class="error" id="err-adults" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="hotel_category">Hotel category *</label>
+              <select id="hotel_category" name="hotel_category" required>
+                <option value="">Select category</option>
+                <option value="1">1 Star</option>
+                <option value="2">2 Star</option>
+                <option value="3">3 Star</option>
+                <option value="4">4 Star</option>
+                <option value="5">5 Star</option>
+              </select>
+              <small class="error" id="err-hotel_category" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="budget">Max total budget (INR) *</label>
+              <input type="number" id="budget" name="budget" min="1" step="100" placeholder="e.g. 50000" required />
+              <small class="error" id="err-budget" aria-live="polite"></small>
+            </div>
+            <div class="field">
+              <label for="preferred_airline">Preferred airline <span class="opt">(optional)</span></label>
+              <select id="preferred_airline" name="preferred_airline">
+                <option value="">Any airline</option>
+                <option>IndiGo</option>
+                <option>Air India</option>
+                <option>Vistara</option>
+                <option>SpiceJet</option>
+                <option>Akasa Air</option>
+                <option>AirAsia India</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="max_stops">Max flight stops <span class="opt">(optional)</span></label>
+              <select id="max_stops" name="max_stops">
+                <option value="">Any</option>
+                <option value="0">Non-stop only</option>
+                <option value="1">Up to 1 stop</option>
+                <option value="2">Up to 2 stops</option>
+              </select>
+            </div>
+            <fieldset class="field field-wide amenities">
+              <legend>Preferred hotel amenities <span class="opt">(optional)</span></legend>
+              <div class="chips">
+                <label><input type="checkbox" name="amenities" value="wifi" /> Wi‑Fi</label>
+                <label><input type="checkbox" name="amenities" value="breakfast" /> Breakfast</label>
+                <label><input type="checkbox" name="amenities" value="pool" /> Pool</label>
+                <label><input type="checkbox" name="amenities" value="gym" /> Gym</label>
+                <label><input type="checkbox" name="amenities" value="parking" /> Parking</label>
+                <label><input type="checkbox" name="amenities" value="spa" /> Spa</label>
+              </div>
+            </fieldset>
+          </div>
+          <div class="form-actions">
+            <button type="reset" class="btn btn-ghost" id="resetBtn">Reset</button>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Find Best Package</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="results" class="results container" aria-live="polite" hidden></section>
+
+    <section id="searches" class="container searches">
+      <h2>My Searches</h2>
+      <ul id="searchHistory" class="history"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">© 2026 Automated E-Commerce Concierge Agent · AI travel planning project</div>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
