@@ -73,7 +73,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         errors.append(f"{loc}: {msg}")
     
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "status": "VALIDATION_ERROR",
             "message": "Input validation failed for travel requirements.",
@@ -94,8 +94,9 @@ async def generic_exception_handler(request: Request, exc: Exception):
         },
     )
 
-# Mount API routes
+# Mount API routes (with /api prefix and root fallback)
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+app.include_router(api_router)
 
 @app.get("/")
 def root():

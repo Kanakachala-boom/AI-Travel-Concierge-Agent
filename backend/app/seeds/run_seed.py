@@ -18,7 +18,17 @@ def seed_database(clear_existing: bool = True):
     db = SessionLocal()
     try:
         if clear_existing:
-            print("Clearing existing simulated flight and hotel records...")
+            print("Clearing existing simulated flight, hotel, and booking records...")
+            from app.models.booking import Booking
+            from app.models.recommendation import RecommendationHistory
+            try:
+                db.query(Booking).delete()
+            except Exception:
+                pass
+            try:
+                db.query(RecommendationHistory).delete()
+            except Exception:
+                pass
             db.query(HotelAvailability).delete()
             db.query(Hotel).delete()
             db.query(Flight).delete()

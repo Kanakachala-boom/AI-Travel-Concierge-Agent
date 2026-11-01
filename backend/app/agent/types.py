@@ -45,6 +45,9 @@ class FlightDTO(BaseModel):
     layover_duration_minutes: int
     price_per_adult: float
     available_seats: int
+    data_source: str = "SIMULATED"
+    currency: str = "INR"
+    offer_id: Optional[str] = None
 
 
 class HotelDTO(BaseModel):
@@ -58,10 +61,17 @@ class HotelDTO(BaseModel):
     max_occupancy_per_room: int
     description: Optional[str] = None
     image_url: Optional[str] = None
+    data_source: str = "SIMULATED"
+    currency: str = "INR"
+    offer_id: Optional[str] = None
 
 
 class TravelPackage(BaseModel):
     """A feasible candidate package combining outbound flight, return flight, and hotel."""
+    package_id: Optional[str] = None
+    data_source: str = "SIMULATED"
+    currency: str = "INR"
+
     outbound_flight: FlightDTO
     return_flight: FlightDTO
     hotel: HotelDTO
@@ -73,6 +83,9 @@ class TravelPackage(BaseModel):
     hotel_cost: float
     total_cost: float
     remaining_budget: float
+
+    itemized_cost_breakdown: Optional[Dict[str, Any]] = None
+    assumptions: List[str] = Field(default_factory=list)
 
     # Soft constraint score / penalty metric
     convenience_score: float = 0.0
@@ -102,8 +115,12 @@ class RejectionSummary(BaseModel):
 class AgentResult(BaseModel):
     status: str  # "SUCCESS", "NO_FEASIBLE_PACKAGE", "INVALID_INPUT"
     message: str
+    data_source: str = "SIMULATED"
+    currency: str = "INR"
     best_package: Optional[TravelPackage] = None
     alternative_packages: List[TravelPackage] = Field(default_factory=list)
     explanation: str
+    itemized_cost_breakdown: Optional[Dict[str, Any]] = None
+    assumptions: List[str] = Field(default_factory=list)
     actionable_suggestions: List[str] = Field(default_factory=list)
     rejection_summary: RejectionSummary = Field(default_factory=RejectionSummary)

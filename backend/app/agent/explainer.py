@@ -21,8 +21,13 @@ def generate_recommendation_explanation(
     ]
 
     # Constraints satisfied
+    if req.max_flight_stops == 0 and req.max_flight_stops_is_hard:
+        route_desc = f"Direct non-stop round-trip between {req.departure_city} and {req.destination_city}"
+    else:
+        route_desc = f"Valid round-trip route between {req.departure_city} and {req.destination_city}"
+
     lines.append(
-        f"• Hard Constraints: Non-stop/feasible round-trip between {req.departure_city} and {req.destination_city} "
+        f"• Hard Constraints: {route_desc} "
         f"for {req.adults} adult{'s' if req.adults > 1 else ''} ({best_pkg.rooms_required} room{'s' if best_pkg.rooms_required > 1 else ''}, {best_pkg.nights} night{'s' if best_pkg.nights > 1 else ''})."
     )
 
@@ -83,11 +88,44 @@ def generate_infeasible_explanation(
         )
 
     if rejections.hotel_stars_mismatch > 0 and req.preferred_hotel_stars:
+        if req.hotel_category_is_hard:
+            explanation_parts.append(
+                f"No hotels matching your strict {req.preferred_hotel_stars}★ requirement could be paired with flights within your budget."
+            )
+            if req.preferred_hotel_stars >= 5:
+                suggestions.append(
+                    "Enable 'Flexible Hotel Category' or select a 3★ or 4★ hotel tier to view lower-cost accommodations."
+                )
+            elif req.preferred_hotel_stars == 4:
+                suggestions.append(
+                    "Enable 'Flexible Hotel Category' or select a 3★ hotel tier to view lower-cost accommodations."
+                )
+            else:
+                suggestions.append(
+                    "Enable 'Flexible Hotel Category' to consider alternative accommodations within budget."
+                )
+        else:
+            explanation_parts.append(
+                f"No hotels matching your preferred {req.preferred_hotel_stars}★ tier (even with star relaxation) could be paired with flights within your budget."
+            )
+            suggestions.append(
+                "Consider adjusting travel dates or increasing budget, as flexible hotel tiers still exceeded criteria."
+            )
+
+    if rejections.stops_exceeded > 0 and req.max_flight_stops is not None and req.max_flight_stops_is_hard:
         explanation_parts.append(
-            f"No hotels matching your strict {req.preferred_hotel_stars}★ requirement could be paired with flights within your budget."
+            f"Strict flight stop limit ({req.max_flight_stops} max stops) excluded {rejections.stops_exceeded} candidate combinations."
         )
         suggestions.append(
-            f"Enable 'Flexible Hotel Category' or select a 3★ or 4★ hotel tier to view lower-cost accommodations."
+            "Allow connecting flights by increasing max stops or making stop limits flexible."
+        )
+
+    if rejections.amenities_missing > 0 and req.preferred_amenities and req.amenities_are_hard:
+        explanation_parts.append(
+            f"Mandatory amenities requirement excluded {rejections.amenities_missing} candidate combinations."
+        )
+        suggestions.append(
+            f"Relax mandatory amenities ({', '.join(req.preferred_amenities)}) to expand available hotel options."
         )
 
     if rejections.insufficient_flight_seats > 0 or rejections.insufficient_hotel_rooms > 0:

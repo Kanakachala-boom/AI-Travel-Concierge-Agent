@@ -21,6 +21,14 @@ class Settings(BaseSettings):
         "http://localhost:4173",
     ]
 
+    # Optional Travel Provider Configuration
+    # Defaults to 'simulated' for deterministic academic demonstration
+    PROVIDER_MODE: str = "simulated"
+    AMADEUS_CLIENT_ID: str = ""
+    AMADEUS_CLIENT_SECRET: str = ""
+    AMADEUS_ENV: str = "test"
+    AMADEUS_TIMEOUT_SECONDS: int = 10
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

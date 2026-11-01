@@ -30,11 +30,17 @@ class RecommendationResponse(BaseModel):
     id: Optional[str] = None
     status: str
     message: str
+    data_source: str = "SIMULATED"
+    currency: str = "INR"
     best_package: Optional[TravelPackage] = None
     alternative_packages: List[TravelPackage] = Field(default_factory=list)
     explanation: str
+    itemized_cost_breakdown: Optional[dict] = None
+    assumptions: List[str] = Field(default_factory=list)
     actionable_suggestions: List[str] = Field(default_factory=list)
     rejection_summary: RejectionSummary = Field(default_factory=RejectionSummary)
+    booking_status: Optional[str] = None
+    booking_handoff_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

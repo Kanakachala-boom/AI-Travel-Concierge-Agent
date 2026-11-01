@@ -85,20 +85,21 @@ def create_recommendation(
         rooms_per_party=payload.rooms_per_party,
     )
 
-    # 2. Dynamic inventory verification: Ensure simulated flight & hotel inventory exists
-    outbounds = ensure_flights_for_route_and_date(
-        db, payload.departure_city, payload.destination_city, payload.departure_date
+    # 2. Dynamic inventory verification via configured travel provider
+    from app.services import get_travel_provider
+    provider = get_travel_provider(db=db)
+    outbounds = provider.search_flights(
+        payload.departure_city, payload.destination_city, payload.departure_date, payload.adults
     )
-    returns = ensure_flights_for_route_and_date(
-        db, payload.destination_city, payload.departure_city, payload.return_date
+    returns = provider.search_flights(
+        payload.destination_city, payload.departure_city, payload.return_date, payload.adults
     )
-    hotels = ensure_hotels_for_city_and_dates(
-        db, payload.destination_city, payload.departure_date, payload.return_date
+    hotels = provider.search_hotels(
+        payload.destination_city, payload.departure_date, payload.return_date, payload.adults
     )
 
-    # Convert to DTOs
-    all_flights = [flight_to_dto(f) for f in (outbounds + returns)]
-    all_hotels = [hotel_to_dto(h) for h in hotels]
+    all_flights = outbounds + returns
+    all_hotels = hotels
 
     # 3. Execute the Goal-Based Intelligent Agent
     agent = ConciergeAgent()
@@ -110,9 +111,13 @@ def create_recommendation(
         id=search_id,
         status=agent_result.status,
         message=agent_result.message,
+        data_source=agent_result.data_source,
+        currency=agent_result.currency,
         best_package=agent_result.best_package,
         alternative_packages=agent_result.alternative_packages,
         explanation=agent_result.explanation,
+        itemized_cost_breakdown=agent_result.itemized_cost_breakdown,
+        assumptions=agent_result.assumptions,
         actionable_suggestions=agent_result.actionable_suggestions,
         rejection_summary=agent_result.rejection_summary,
     )
@@ -160,3 +165,14 @@ def get_recommendation_by_id(search_id: str, db: Session = Depends(get_db)):
         )
     
     return RecommendationResponse(**record.response_payload)
+
+
+search_router = APIRouter(tags=["Search Packages"])
+
+@search_router.post("/search-packages", response_model=RecommendationResponse, status_code=status.HTTP_200_OK)
+def search_packages(payload: RecommendationRequest, db: Session = Depends(get_db)):
+    """
+    Search packages endpoint alias for external callers and API compliance.
+    Executes the goal-based recommendation engine identically to /recommendations.
+    """
+    return create_recommendation(payload, db)

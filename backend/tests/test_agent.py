@@ -291,3 +291,129 @@ class TestAgentLogic:
         sorted_pkgs = sort_and_optimize_packages([pkg_stop, pkg_direct], req)
         assert sorted_pkgs[0].outbound_flight.flight_number == "DIR-01"
         assert sorted_pkgs[0].outbound_flight.stops == 0
+
+    def test_explanation_accuracy_with_stops_under_soft_preference(self):
+        """
+        Regression test: When flights with stops are selected under a soft stop preference,
+        the explanation must not falsely claim 'Non-stop' under Hard Constraints.
+        Instead, it accurately states the round-trip route and retains the soft preference note.
+        """
+        agent = ConciergeAgent()
+        req = TravelRequirements(
+            departure_city="Delhi",
+            destination_city="Mumbai",
+            departure_date=date(2026, 11, 10),
+            return_date=date(2026, 11, 14),
+            adults=2,
+            budget=50000.0,
+            preferred_hotel_stars=3,
+            max_flight_stops=0,
+            max_flight_stops_is_hard=False,
+        )
+        flight_out = FlightDTO(
+            id=1, flight_number="SG-162", airline="SpiceJet",
+            origin_city="Delhi", origin_code="DEL", destination_city="Mumbai", destination_code="BOM",
+            departure_time=datetime(2026, 11, 10, 11, 0), arrival_time=datetime(2026, 11, 10, 15, 30),
+            duration_minutes=270, stops=1, layover_duration_minutes=75, price_per_adult=3600.0, available_seats=10
+        )
+        flight_ret = FlightDTO(
+            id=2, flight_number="SG-163", airline="SpiceJet",
+            origin_city="Mumbai", origin_code="BOM", destination_city="Delhi", destination_code="DEL",
+            departure_time=datetime(2026, 11, 14, 18, 0), arrival_time=datetime(2026, 11, 14, 22, 30),
+            duration_minutes=270, stops=1, layover_duration_minutes=75, price_per_adult=3550.0, available_seats=10
+        )
+        hotel = HotelDTO(
+            id=1, name="Treebo Trend", city="Mumbai", star_rating=3,
+            price_per_night=2800.0, amenities=["Free WiFi"], available_rooms=5, max_occupancy_per_room=2
+        )
+
+        res = agent.run(req, [flight_out, flight_ret], [hotel])
+        assert res.status == "SUCCESS"
+        assert res.best_package is not None
+        assert res.best_package.outbound_flight.stops == 1
+        assert res.best_package.return_flight.stops == 1
+
+        explanation = res.explanation
+        assert "non-stop" not in explanation.lower()
+        assert "Valid round-trip route between Delhi and Mumbai" in explanation
+        assert "2 total stops" in explanation
+        assert "Exceeds preferred max stops (0)" in explanation
+
+    def test_explanation_accuracy_with_hard_non_stop_constraint(self, sample_flights, sample_hotels):
+        """
+        Verifies that when max_flight_stops=0 is enforced as a HARD constraint on a seeded route,
+        the explanation explicitly states 'Direct non-stop round-trip' and does not state 'Valid round-trip route'.
+        """
+        agent = ConciergeAgent()
+        req = TravelRequirements(
+            departure_city="Delhi",
+            destination_city="Mumbai",
+            departure_date=date(2026, 11, 10),
+            return_date=date(2026, 11, 14),
+            adults=1,
+            budget=50000.0,
+            preferred_hotel_stars=3,
+            max_flight_stops=0,
+            max_flight_stops_is_hard=True,
+        )
+        res = agent.run(req, sample_flights, sample_hotels)
+        assert res.status == "SUCCESS"
+        assert res.best_package is not None
+        assert res.best_package.outbound_flight.stops == 0
+        assert res.best_package.return_flight.stops == 0
+
+        explanation = res.explanation
+        assert "Direct non-stop round-trip" in explanation
+        assert "Valid round-trip route" not in explanation
+
+    def test_infeasible_suggestions_no_redundant_hotel_tier_when_hard_3_star_requested(self, sample_flights, sample_hotels):
+        """
+        Regression test: When the request already specifies a hard 3-star hotel requirement,
+        the actionable suggestions must not redundantly suggest selecting a 3-star or 4-star tier.
+        """
+        agent = ConciergeAgent()
+        req = TravelRequirements(
+            departure_city="Delhi",
+            destination_city="Mumbai",
+            departure_date=date(2026, 11, 10),
+            return_date=date(2026, 11, 14),
+            adults=1,
+            budget=4000.0,  # Below flight and hotel minimums
+            preferred_hotel_stars=3,
+            hotel_category_is_hard=True,
+        )
+        result = agent.run(req, sample_flights, sample_hotels)
+        assert result.status == "NO_FEASIBLE_PACKAGE"
+        assert len(result.actionable_suggestions) > 0
+
+        joined_suggestions = " ".join(result.actionable_suggestions)
+        # Verify no redundant suggestion to select 3-star or 4-star
+        assert "3★ or 4★" not in joined_suggestions
+        assert "select a 3★" not in joined_suggestions
+        assert "select a 4★" not in joined_suggestions
+        # Verify appropriate constraint-based suggestions are provided
+        assert "Flexible Hotel Category" in joined_suggestions
+        assert "increasing your budget" in joined_suggestions
+
+    def test_infeasible_suggestions_with_flexible_hotel_category_already_enabled(self, sample_flights, sample_hotels):
+        """
+        Regression test: When flexible hotel category was already enabled (hotel_category_is_hard=False),
+        the suggestions should not redundantly ask the user to 'Enable Flexible Hotel Category'.
+        """
+        agent = ConciergeAgent()
+        req = TravelRequirements(
+            departure_city="Delhi",
+            destination_city="Mumbai",
+            departure_date=date(2026, 11, 10),
+            return_date=date(2026, 11, 14),
+            adults=1,
+            budget=2000.0,
+            preferred_hotel_stars=3,
+            hotel_category_is_hard=False,
+        )
+        result = agent.run(req, sample_flights, sample_hotels)
+        assert result.status == "NO_FEASIBLE_PACKAGE"
+        assert len(result.actionable_suggestions) > 0
+
+        joined_suggestions = " ".join(result.actionable_suggestions)
+        assert "Enable 'Flexible Hotel Category'" not in joined_suggestions

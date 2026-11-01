@@ -157,9 +157,13 @@ class ConciergeAgent:
         return AgentResult(
             status="SUCCESS",
             message="Optimal travel package identified satisfying all hard constraints.",
+            data_source=best_package.data_source,
+            currency=best_package.currency,
             best_package=best_package,
             alternative_packages=alternatives,
             explanation=explanation,
+            itemized_cost_breakdown=best_package.itemized_cost_breakdown,
+            assumptions=best_package.assumptions,
             actionable_suggestions=[],
             rejection_summary=rejections
         )
@@ -211,7 +215,30 @@ class ConciergeAgent:
                                 rejections.amenities_missing += 1
                         continue
 
+                    assumptions = [
+                        f"Quoted airfares are per passenger (₹{out_flight.price_per_adult:,.0f} outbound + ₹{ret_flight.price_per_adult:,.0f} return), inclusive of taxes.",
+                        f"Hotel rate of ₹{hotel.price_per_night:,.0f}/night calculated for {rooms_req} room(s) across {req.nights} night(s).",
+                        ("Standard occupancy: 2 adults per room under room-sharing preference." if req.room_sharing else f"Individual private room allocated per adult traveler ({req.adults} rooms).")
+                    ]
+                    breakdown = {
+                        "currency": "INR",
+                        "adults": req.adults,
+                        "nights": req.nights,
+                        "rooms_required": rooms_req,
+                        "outbound_fare_per_adult": out_flight.price_per_adult,
+                        "return_fare_per_adult": ret_flight.price_per_adult,
+                        "total_flight_cost": flight_cost,
+                        "hotel_nightly_rate": hotel.price_per_night,
+                        "total_hotel_cost": hotel_cost,
+                        "total_package_cost": total_cost,
+                        "budget": req.budget,
+                        "remaining_budget": req.budget - total_cost,
+                    }
+
                     pkg = TravelPackage(
+                        package_id=f"PKG-{out_flight.flight_number}-{ret_flight.flight_number}-{hotel.id}",
+                        data_source=out_flight.data_source,
+                        currency="INR",
                         outbound_flight=out_flight,
                         return_flight=ret_flight,
                         hotel=hotel,
@@ -221,6 +248,8 @@ class ConciergeAgent:
                         hotel_cost=hotel_cost,
                         total_cost=total_cost,
                         remaining_budget=req.budget - total_cost,
+                        itemized_cost_breakdown=breakdown,
+                        assumptions=assumptions,
                         is_relaxed_hotel_category=allow_star_relaxation and (hotel.star_rating != req.preferred_hotel_stars)
                     )
                     valid_packages.append(pkg)

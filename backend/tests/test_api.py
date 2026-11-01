@@ -179,3 +179,60 @@ class TestEdgeCasesAndValidation:
         history = response.json()
         assert isinstance(history, list)
         assert len(history) >= 1
+
+    def test_api_response_utf8_encoding_rupee_and_star_symbols(self, client):
+        """
+        Regression test: Verify API returns clean UTF-8 encoded JSON with valid rupee (₹)
+        and star (★) unicode characters without replacement characters (\ufffd).
+        """
+        payload = {
+            "departure_city": "Delhi",
+            "destination_city": "Mumbai",
+            "departure_date": "2026-11-10",
+            "return_date": "2026-11-14",
+            "adults": 2,
+            "budget": 50000.0,
+            "preferred_hotel_stars": 3,
+        }
+        response = client.post("/api/recommendations", json=payload)
+        assert response.status_code == 200
+        assert "application/json" in response.headers.get("content-type", "")
+
+        # Verify raw bytes contain exact UTF-8 sequences for ₹ (0xE2 0x82 0xB9) and ★ (0xE2 0x98 0x85)
+        assert b"\xe2\x82\xb9" in response.content, "Rupee symbol byte sequence missing in response body"
+        assert b"\xe2\x98\x85" in response.content, "Star symbol byte sequence missing in response body"
+
+        # Verify parsed JSON text contains unicode glyphs without replacement character
+        assert "\ufffd" not in response.text, "Corrupt replacement character detected in response"
+        data = response.json()
+        assert "₹" in data["explanation"]
+        assert "★" in data["explanation"]
+
+    def test_infeasible_api_response_tailored_suggestions_and_encoding(self, client):
+        """
+        Regression test: Verify that an infeasible-budget API response with hard 3-star constraint
+        delivers tailored suggestions without redundant 3-star/4-star suggestions and with valid UTF-8 symbols.
+        """
+        payload = {
+            "departure_city": "Delhi",
+            "destination_city": "Mumbai",
+            "departure_date": "2026-11-10",
+            "return_date": "2026-11-14",
+            "adults": 2,
+            "budget": 3000.0,
+            "preferred_hotel_stars": 3,
+            "hotel_category_is_hard": True,
+        }
+        response = client.post("/api/recommendations", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "NO_FEASIBLE_PACKAGE"
+        assert len(data["actionable_suggestions"]) > 0
+
+        suggestions_str = " ".join(data["actionable_suggestions"])
+        assert "3★ or 4★" not in suggestions_str
+        assert "select a 3★" not in suggestions_str
+        assert "select a 4★" not in suggestions_str
+        assert "Flexible Hotel Category" in suggestions_str
+        assert "₹" in suggestions_str
+        assert "\ufffd" not in response.text

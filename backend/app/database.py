@@ -26,5 +26,5 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from app.models import flight, hotel, recommendation  # noqa: F401
+    from app.models import flight, hotel, recommendation, booking  # noqa: F401
     Base.metadata.create_all(bind=engine)
