@@ -57,9 +57,11 @@ class BaseTravelProvider(ABC):
         package_details: Dict[str, Any],
         customer_details: Dict[str, Any],
         explicit_confirmation: bool,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Submits a reservation request only with explicit user confirmation.
+        Associates booking with authenticated user_id if provided.
         Returns booking reference, status, and clear data source indicator.
         """
         pass

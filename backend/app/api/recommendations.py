@@ -10,6 +10,8 @@ from app.database import get_db
 from app.models.flight import Flight
 from app.models.hotel import Hotel
 from app.models.recommendation import RecommendationHistory
+from app.models.user import User
+from app.api.deps import get_current_user
 from app.schemas.recommendation import (
     RecommendationRequest,
     RecommendationResponse,
@@ -59,11 +61,13 @@ def hotel_to_dto(h: Hotel) -> HotelDTO:
 @router.post("", response_model=RecommendationResponse, status_code=status.HTTP_200_OK)
 def create_recommendation(
     payload: RecommendationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Validates travel requirements, ensures simulated inventory exists for route & dates,
-    executes the goal-based agent optimization, persists search history, and returns ranked packages.
+    executes the goal-based agent optimization, persists search history bound to authenticated user,
+    and returns ranked packages.
     """
     # 1. Map to agent's TravelRequirements domain model
     req = TravelRequirements(
@@ -105,7 +109,7 @@ def create_recommendation(
     agent = ConciergeAgent()
     agent_result = agent.run(req, all_flights, all_hotels)
 
-    # 4. Generate persistent ID & save search history to DB
+    # 4. Generate persistent ID & save search history to DB with current_user.id
     search_id = str(uuid.uuid4())
     response_data = RecommendationResponse(
         id=search_id,
@@ -125,6 +129,7 @@ def create_recommendation(
     try:
         history_record = RecommendationHistory(
             id=search_id,
+            user_id=current_user.id,
             departure_city=payload.departure_city,
             destination_city=payload.destination_city,
             departure_date=payload.departure_date,
@@ -146,18 +151,43 @@ def create_recommendation(
 
 
 @router.get("/history", response_model=List[RecommendationHistoryItem])
-def get_recommendation_history(limit: int = 10, db: Session = Depends(get_db)):
-    """Retrieves recent recommendation search history records."""
-    records = db.query(RecommendationHistory).order_by(
-        RecommendationHistory.created_at.desc()
-    ).limit(limit).all()
+def get_recommendation_history(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retrieves recent recommendation search history records for the authenticated user only.
+    Multi-tenant isolation: Users cannot view another user's searches.
+    """
+    records = (
+        db.query(RecommendationHistory)
+        .filter(RecommendationHistory.user_id == current_user.id)
+        .order_by(RecommendationHistory.created_at.desc())
+        .limit(limit)
+        .all()
+    )
     return records
 
 
 @router.get("/{search_id}", response_model=RecommendationResponse)
-def get_recommendation_by_id(search_id: str, db: Session = Depends(get_db)):
-    """Retrieves a previously computed recommendation by its unique search ID."""
-    record = db.query(RecommendationHistory).filter(RecommendationHistory.id == search_id).first()
+def get_recommendation_by_id(
+    search_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retrieves a previously computed recommendation by its ID if it belongs to the authenticated user.
+    Returns 404 if not found or owned by another user.
+    """
+    record = (
+        db.query(RecommendationHistory)
+        .filter(
+            RecommendationHistory.id == search_id,
+            RecommendationHistory.user_id == current_user.id,
+        )
+        .first()
+    )
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -170,9 +200,14 @@ def get_recommendation_by_id(search_id: str, db: Session = Depends(get_db)):
 search_router = APIRouter(tags=["Search Packages"])
 
 @search_router.post("/search-packages", response_model=RecommendationResponse, status_code=status.HTTP_200_OK)
-def search_packages(payload: RecommendationRequest, db: Session = Depends(get_db)):
+def search_packages(
+    payload: RecommendationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Search packages endpoint alias for external callers and API compliance.
     Executes the goal-based recommendation engine identically to /recommendations.
+    Requires authentication.
     """
-    return create_recommendation(payload, db)
+    return create_recommendation(payload, db, current_user)

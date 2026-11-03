@@ -1,5 +1,6 @@
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field, ConfigDict
 
 class VerifyOfferRequest(BaseModel):
     offer_id: str = Field(..., description="Unique offer identifier to revalidate")
@@ -40,3 +41,20 @@ class BookingConfirmResponse(BaseModel):
     handoff_url: Optional[str] = None
     disclaimer: str
     message: str
+
+class BookingHistoryItem(BaseModel):
+    id: str
+    booking_reference: str
+    offer_id: str
+    customer_name: str
+    customer_email: str
+    customer_phone: Optional[str] = None
+    passenger_count: int = 1
+    total_charged: float = 0.0
+    currency: str = "INR"
+    data_source: str = "SIMULATED"
+    status: str
+    created_at: datetime
+    package_details: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)

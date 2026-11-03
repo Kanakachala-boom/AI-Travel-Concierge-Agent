@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Float, Integer, DateTime, JSON
+from sqlalchemy import Column, String, Float, Integer, DateTime, JSON, ForeignKey
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 def generate_uuid() -> str:
@@ -12,6 +13,7 @@ class Booking(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
     booking_reference = Column(String(50), unique=True, index=True, nullable=False)
     offer_id = Column(String(100), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     
     customer_name = Column(String(150), nullable=False)
     customer_email = Column(String(150), nullable=False)
@@ -25,6 +27,8 @@ class Booking(Base):
     
     package_details = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", back_populates="bookings")
 
     def __repr__(self):
         return f"<Booking {self.booking_reference} offer={self.offer_id} status={self.status}>"

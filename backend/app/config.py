@@ -19,6 +19,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://localhost:4173",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
     ]
 
     # Optional Travel Provider Configuration
@@ -28,6 +34,14 @@ class Settings(BaseSettings):
     AMADEUS_CLIENT_SECRET: str = ""
     AMADEUS_ENV: str = "test"
     AMADEUS_TIMEOUT_SECONDS: int = 10
+
+    # JWT Authentication Configuration
+    JWT_SECRET_KEY: str = os.getenv(
+        "JWT_SECRET_KEY",
+        "concierge-jwt-secret-key-production-strength-2026-travel-ai-secure-token-32b"
+    )
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
     model_config = SettingsConfigDict(
         env_file=".env",

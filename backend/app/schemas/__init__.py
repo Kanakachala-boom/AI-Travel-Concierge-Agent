@@ -5,11 +5,18 @@ from app.schemas.recommendation import (
     RecommendationResponse,
     RecommendationHistoryItem,
 )
-
-__all__ = [
-    "FlightOut",
-    "HotelOut",
-    "RecommendationRequest",
-    "RecommendationResponse",
-    "RecommendationHistoryItem",
-]
+from app.schemas.booking import (
+    VerifyOfferRequest,
+    VerifyOfferResponse,
+    BookingConfirmRequest,
+    BookingConfirmResponse,
+    BookingHistoryItem,
+)
+from app.schemas.auth import (
+    UserRegisterRequest,
+    UserLoginRequest,
+    UserResponse,
+    UserProfileResponse,
+    TokenResponse,
+    LogoutResponse,
+)

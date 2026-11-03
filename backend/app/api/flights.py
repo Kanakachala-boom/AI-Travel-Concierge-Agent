@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app.models.flight import Flight
+from app.models.user import User
+from app.api.deps import get_current_user
 from app.schemas.flight import FlightOut
 
 router = APIRouter(prefix="/flights", tags=["Flights"])
@@ -16,9 +18,10 @@ def get_flights(
     flight_date: Optional[date] = Query(None, alias="date", description="Flight departure date (YYYY-MM-DD)"),
     airline: Optional[str] = Query(None, description="Airline name"),
     max_stops: Optional[int] = Query(None, ge=0, description="Max stops"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Retrieves simulated flights with optional filtering."""
+    """Retrieves simulated flights with optional filtering (requires authentication)."""
     query = db.query(Flight)
     
     if origin:

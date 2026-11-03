@@ -11,7 +11,7 @@ venv/
 backend/venv/
 backend/.venv/
 
-# Pytest / Coverage
+# Pytest / Coverage / Caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -23,20 +23,22 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
-# ─────────────── Frontend (Managed Separately) ───────────────
-frontend/
+# Frontend build & dependencies (Vanilla frontend in frontend/ is tracked)
 node_modules/
 dist/
 build/
 .vite/
+frontend_backup/
 
-
-# ─────────────── Environment & Secrets ───────────────
+# Environment & Secrets (Never commit actual secrets)
 .env
 .env.*
 !.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
 
-# ─────────────── IDE & Editor ───────────────
+# IDE & Editor
 .idea/
 .vscode/
 *.swp
@@ -46,14 +48,16 @@ build/
 *.sln
 *.sw?
 
-# ─────────────── OS Files ───────────────
+# OS Files
 .DS_Store
 Thumbs.db
 
-# ─────────────── Logs ───────────────
+# Logs & Temporary Test Profiles
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+temp_chrome_profile/
+chrome-cdp-*/

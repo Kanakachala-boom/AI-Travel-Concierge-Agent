@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.config import settings
 
@@ -25,6 +25,24 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initialize database tables."""
-    from app.models import flight, hotel, recommendation, booking  # noqa: F401
+    """Initialize database tables and run safe schema migrations."""
+    from app.models import flight, hotel, recommendation, booking, user  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # Safe migration for existing SQLite or relational databases: ensure user_id column exists
+    try:
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names()
+        if "bookings" in table_names:
+            cols = [c["name"] for c in inspector.get_columns("bookings")]
+            if "user_id" not in cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE bookings ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+        if "recommendation_histories" in table_names:
+            cols = [c["name"] for c in inspector.get_columns("recommendation_histories")]
+            if "user_id" not in cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE recommendation_histories ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+    except Exception as e:
+        # If columns already exist or dialect handles differently, continue gracefully
+        pass

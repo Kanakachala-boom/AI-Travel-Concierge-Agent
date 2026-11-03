@@ -1,5 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
 from app.main import app
 from app.seeds.run_seed import seed_database
 
@@ -7,10 +6,6 @@ from app.seeds.run_seed import seed_database
 def setup_test_db():
     """Ensure database has clean seeded records for integration testing."""
     seed_database(clear_existing=True)
-
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 class TestHealthAndInventoryAPI:
     def test_health_endpoint(self, client):

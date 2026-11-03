@@ -231,6 +231,7 @@ class SimulatedTravelProvider(BaseTravelProvider):
         package_details: Dict[str, Any],
         customer_details: Dict[str, Any],
         explicit_confirmation: bool,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Processes a simulated booking after verifying explicit confirmation, customer details,
@@ -384,10 +385,13 @@ class SimulatedTravelProvider(BaseTravelProvider):
         should_close = self._external_db is None
         try:
             from app.models.booking import Booking
-            existing = db.query(Booking).filter(
+            dup_query = db.query(Booking).filter(
                 Booking.offer_id == offer_id,
                 Booking.status == "CONFIRMED_SIMULATED",
-            ).first()
+            )
+            if user_id is not None:
+                dup_query = dup_query.filter(Booking.user_id == user_id)
+            existing = dup_query.first()
 
             if existing:
                 return {
@@ -407,6 +411,7 @@ class SimulatedTravelProvider(BaseTravelProvider):
             new_booking = Booking(
                 booking_reference=ref,
                 offer_id=offer_id,
+                user_id=user_id,
                 customer_name=cust_name,
                 customer_email=cust_email,
                 customer_phone=customer_details.get("phone"),

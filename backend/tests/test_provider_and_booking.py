@@ -12,7 +12,8 @@ def setup_test_db():
     """Ensure database has clean seeded records for provider and booking testing."""
     seed_database(clear_existing=True)
 
-client = TestClient(app)
+from tests.conftest import get_test_auth_headers
+client = TestClient(app, headers=get_test_auth_headers())
 
 class TestProviderAndBookingWorkflow:
     """
@@ -521,3 +522,46 @@ class TestProviderAndBookingWorkflow:
         assert dup_data["status"] == "DUPLICATE_BOOKING"
         assert dup_data["booking_reference"] == booking_ref
         assert "already been booked" in dup_data["message"].lower()
+
+    def test_booking_history_and_lookup_endpoints(self):
+        """Verify GET /api/booking/history and GET /api/booking/{reference} endpoints."""
+        # 1. Fetch initial booking history
+        res = client.get("/api/booking/history?limit=10")
+        assert res.status_code == 200
+        history = res.json()
+        assert isinstance(history, list)
+
+        # 2. Book a new unique package with explicit confirmation
+        import uuid
+        unique_offer = f"PKG-HIST-{uuid.uuid4().hex[:8]}"
+        payload = {
+            "offer_id": unique_offer,
+            "confirm": True,
+            "customer": {
+                "name": "Test Traveler",
+                "email": "traveler@test.com",
+                "passenger_count": 1,
+            },
+            "package_details": {
+                "offer_id": unique_offer,
+                "total_cost": 15000.0,
+                "currency": "INR",
+            },
+        }
+        book_res = client.post("/api/booking/confirm", json=payload)
+        assert book_res.status_code == 200
+        book_data = book_res.json()
+        assert book_data["success"] is True
+        ref = book_data["booking_reference"]
+
+        # 3. Lookup by reference
+        lookup_res = client.get(f"/api/booking/{ref}")
+        assert lookup_res.status_code == 200
+        lookup_data = lookup_res.json()
+        assert lookup_data["booking_reference"] == ref
+        assert lookup_data["customer_name"] == "Test Traveler"
+        assert lookup_data["total_charged"] == 15000.0
+
+        # 4. Lookup non-existent reference returns 404
+        bad_lookup = client.get("/api/booking/NON_EXISTENT_REF")
+        assert bad_lookup.status_code == 404

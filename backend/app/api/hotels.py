@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app.models.hotel import Hotel
+from app.models.user import User
+from app.api.deps import get_current_user
 from app.schemas.hotel import HotelOut
 
 router = APIRouter(prefix="/hotels", tags=["Hotels"])
@@ -14,9 +16,10 @@ def get_hotels(
     star_rating: Optional[int] = Query(None, ge=1, le=5, description="Star rating (3, 4, 5)"),
     max_price: Optional[float] = Query(None, gt=0, description="Max nightly price in INR"),
     amenity: Optional[str] = Query(None, description="Specific amenity required"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Retrieves simulated hotels with optional filtering."""
+    """Retrieves simulated hotels with optional filtering (requires authentication)."""
     query = db.query(Hotel)
     
     if city:
